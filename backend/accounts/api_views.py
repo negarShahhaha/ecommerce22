@@ -9,9 +9,12 @@ from django.utils import timezone
 from datetime import timedelta
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers
 
 
 class UserRegisterView(APIView):
+    @extend_schema(request=UserRegisterSerializer, responses=None)
     def post(self, request):
         serializer = UserRegisterSerializer(data=request.data)  # deserialize
         serializer.is_valid(raise_exception=True)
@@ -35,6 +38,7 @@ class UserRegisterView(APIView):
 
 
 class UserRegisterVerifyView(APIView):
+    @extend_schema(request=OtpSerializer, responses=UserSerializer)
     def post(self, request):
         serializer = OtpSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -55,7 +59,16 @@ class UserRegisterVerifyView(APIView):
 
 
 class CustomAuthToken(ObtainAuthToken):
-
+    @extend_schema(request=ObtainAuthToken.serializer_class, responses={
+        200: inline_serializer(
+            name='LoginResponse',
+            fields={
+                'user_id': serializers.CharField(),
+                'token': serializers.UUIDField(),
+                'email': serializers.EmailField(),
+            }
+        )
+    })
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(
             data=request.data,

@@ -49,6 +49,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
+
+    # last app
+    'drf_spectacular',
 ]
 
 MIDDLEWARE = [
@@ -145,3 +148,9 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'alireza808590100@gmail.com'
 EMAIL_HOST_PASSWORD = 'zyizrfkdpirxjltm'
+
+
+REST_FRAMEWORK = {
+    # SETTINGS
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}

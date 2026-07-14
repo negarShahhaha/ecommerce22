@@ -22,3 +22,17 @@
 
 # Install requirements
 > python -m pip install -r requirements.txt
+-------
+
+# Run 
+
+python manage.py runserver
+
+--------
+
+## api guide
+127.0.0.1:8000/api/schema/
+
+> 127.0.0.1:8000/api/docs/ for Swagger UI
+
+127.0.0.1:8000/api/redoc/ for ReDoc
