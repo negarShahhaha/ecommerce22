@@ -1,4 +1,3 @@
-from django.core.serializers import serialize
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .serializers import UserRegisterSerializer, OtpSerializer, UserSerializer
@@ -8,6 +7,8 @@ from .services import send_otp_email, create_user
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.authtoken.models import Token
 
 
 class UserRegisterView(APIView):
@@ -51,3 +52,20 @@ class UserRegisterVerifyView(APIView):
             else:
                 return Response(data={'message': 'code is expired'}, status=status.HTTP_406_NOT_ACCEPTABLE)
         return Response(data={'message': 'code is wrong'}, status=status.HTTP_406_NOT_ACCEPTABLE)
+
+
+class CustomAuthToken(ObtainAuthToken):
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(
+            data=request.data,
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        token, created = Token.objects.get_or_create(user=user)
+        return Response({
+            'user_id': user.pk,
+            'token': token.key,
+            'email': user.email
+        })
