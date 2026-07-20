@@ -24,3 +24,26 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+@import "tailwindcss";
+
+:root {
+  --auth-bg: #ffffff;
+  --auth-primary: #8296B7;
+  --auth-secondary: #CD7B89;
+  --auth-accent: #F1EBDD;
+  --auth-text: #1a1a1a;
+  --auth-muted: #6b7280;
+  --auth-border: #e2e2e2;
+  --auth-panel-gradient: linear-gradient(135deg, #8296B7 0%, #CD7B89 100%);
+}
+
+.dark {
+  --auth-bg: #112440;
+  --auth-primary: #7BAEB6;
+  --auth-secondary: #F9BEC1;
+  --auth-accent: #F1EBDD;
+  --auth-text: #f5f5f5;
+  --auth-muted: #9ca3af;
+  --auth-border: #23384f;
+  --auth-panel-gradient: linear-gradient(135deg, #112440 0%, #7BAEB6 100%);
+}
