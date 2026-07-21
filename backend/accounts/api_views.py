@@ -1,16 +1,20 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .serializers import UserRegisterSerializer, OtpSerializer, UserSerializer
-from .models import PreSaveUser, Otp, User
+from .serializers import UserRegisterSerializer, OtpSerializer, UserSerializer, ProfileSerializer
+from .models import PreSaveUser, Otp
 from rest_framework import status
 from .services import send_otp_email, create_user
-from django.core.exceptions import ValidationError
-from django.utils import timezone
-from datetime import timedelta
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers
+from django.db import transaction
+from core.permissions import IsOwnerOrReadOnly
+from rest_framework.parsers import MultiPartParser, FormParser
+from .selectors import get_profile_by_user_id, get_all_users, get_user_by_id
+from rest_framework import viewsets
+from rest_framework.permissions import IsAdminUser
+from core.paginators import CustomPagination
 
 
 class UserRegisterView(APIView):
@@ -18,21 +22,25 @@ class UserRegisterView(APIView):
     def post(self, request):
         serializer = UserRegisterSerializer(data=request.data)  # deserialize
         serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data['email']
+        username = serializer.validated_data['username']
+        password = serializer.validated_data['password']
+
         PreSaveUser.objects.update_or_create(
-            email=serializer.validated_data['email'],
+            email=email,
             defaults={
-                'username': serializer.validated_data['username'],
-                'password': serializer.validated_data['password'],
+                'username': username,
+                'password': password,
             }
         )
-        otp_instance = Otp.objects.filter(email=serializer.validated_data['email'])
-        if otp_instance.exists():
-            otp_instance.delete()
-        code_instance = Otp.generate_random_code()
-        send_otp_email(email=serializer.validated_data['email'], code=code_instance)
+
+        Otp.objects.filter(email=email).delete()
+        random_code = Otp.generate_random_code()
+        send_otp_email(email=email, code=random_code)
         Otp.objects.create(
-            email=serializer.validated_data['email'],
-            code=code_instance,
+            email=email,
+            code=random_code,
         )
         return Response(data={'message': 'Otp code has been sent'}, status=status.HTTP_200_OK)
 
@@ -42,20 +50,13 @@ class UserRegisterVerifyView(APIView):
     def post(self, request):
         serializer = OtpSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        try:
-            user_data = PreSaveUser.objects.get(email=serializer.validated_data['email'])
-            code_instance = Otp.objects.get(email=serializer.validated_data['email'])
-        except Exception:
-            raise ValidationError('Email is not valid')
-        if code_instance.code == serializer.validated_data['code']:
-            if timezone.now() <= code_instance.created + timedelta(minutes=3):
-                user = create_user(email=user_data.email, username=user_data.username, password=user_data.password)
-                user_data.delete()
-                code_instance.delete()
-                return Response(data=UserSerializer(instance=user).data, status=status.HTTP_201_CREATED)
-            else:
-                return Response(data={'message': 'code is expired'}, status=status.HTTP_406_NOT_ACCEPTABLE)
-        return Response(data={'message': 'code is wrong'}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        user_data = serializer.validated_data['user_data']
+        code_instance = serializer.validated_data['code_instance']
+        with transaction.atomic():
+            user = create_user(email=user_data.email, username=user_data.username, password=user_data.password)
+            user_data.delete()
+            code_instance.delete()
+        return Response(data=UserSerializer(instance=user).data, status=status.HTTP_201_CREATED)
 
 
 class CustomAuthToken(ObtainAuthToken):
@@ -82,3 +83,55 @@ class CustomAuthToken(ObtainAuthToken):
             'token': token.key,
             'email': user.email
         })
+
+
+class UserProfileView(APIView):
+    permission_classes = [IsOwnerOrReadOnly]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get(self, request, user_id):
+        profile = get_profile_by_user_id(user_id=user_id)
+        self.check_object_permissions(request, profile)
+        serializer = ProfileSerializer(instance=profile)
+        return Response(data=serializer.data)
+
+    def patch(self, request, user_id):
+        profile = get_profile_by_user_id(user_id=user_id)
+        self.check_object_permissions(request, profile)
+        serializer = ProfileSerializer(instance=profile, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(data=serializer.data)
+
+
+class UserViewSet(viewsets.ViewSet):
+    queryset = get_all_users()
+    permission_classes = [IsAdminUser]
+    pagination_class = CustomPagination
+
+    def list(self, request):
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(self.queryset, request, view=self)
+
+        if page is not None:
+            serializer = UserSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
+        serializer = UserSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, pk=None):
+        user = get_user_by_id(id=pk)
+        return Response(data=UserSerializer(instance=user).data)
+
+    def partial_update(self, request, pk=None):
+        user = get_user_by_id(id=pk)
+        serializer = UserSerializer(instance=user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(data=serializer.data)
+
+    def destroy(self, request, pk=None):
+        user = get_user_by_id(id=pk)
+        user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
