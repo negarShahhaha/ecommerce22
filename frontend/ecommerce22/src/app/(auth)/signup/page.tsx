@@ -1,4 +1,6 @@
-
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { User, Mail } from "lucide-react";
 import BrandPanel from "@/components/auth/BrandPanel";
 import AuthInput from "@/components/auth/AuthInput";
@@ -7,8 +9,49 @@ import AuthButton from "@/components/auth/AuthButton";
 import AuthDivider from "@/components/auth/AuthDivider";
 import SocialAuthButtons from "@/components/auth/SocialAuthButtons";
 import AuthFooterLink from "@/components/auth/AuthFooterLink";
+import { registerUser } from "@/lib/api/auth";
 
 export default function SignupPage() {
+  const router = useRouter();
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [agreed, setAgreed] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+
+    if (!agreed) {
+      setError("باید قوانین و حریم خصوصی رو بپذیری");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("رمز عبور و تکرارش یکسان نیستن");
+      return;
+    }
+
+    setLoading(true);
+    const res = await registerUser(email, username, password, confirmPassword);
+    setLoading(false);
+
+    if (!res.success) {
+      const firstError =
+        res.errors?.email?.[0] ||
+        res.errors?.username?.[0] ||
+        res.errors?.password?.[0] ||
+        res.errors?.non_field_errors?.[0] ||
+        "خطایی پیش اومد، دوباره امتحان کن";
+      setError(firstError);
+      return;
+    }
+
+    router.push(`/verify?email=${encodeURIComponent(email)}`);
+  }
+
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <BrandPanel
@@ -25,14 +68,42 @@ export default function SignupPage() {
             چند ثانیه‌ای عضو شو و شروع کن
           </p>
 
-          <form>
-            <AuthInput label="نام کامل" name="fullName" icon={<User className="h-4 w-4" />} />
-            <AuthInput label="ایمیل" name="email" type="email" icon={<Mail className="h-4 w-4" />} />
-            <PasswordInput label="رمز عبور" name="password" />
-            <PasswordInput label="تکرار رمز عبور" name="confirmPassword" />
+          <form onSubmit={handleSubmit}>
+            <AuthInput
+              label="نام کاربری"
+              name="username"
+              icon={<User className="h-4 w-4" />}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+            <AuthInput
+              label="ایمیل"
+              name="email"
+              type="email"
+              icon={<Mail className="h-4 w-4" />}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <PasswordInput
+              label="رمز عبور"
+              name="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <PasswordInput
+              label="تکرار رمز عبور"
+              name="confirmPassword"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
 
             <label className="mb-6 flex items-start gap-2 text-sm" style={{ color: "var(--auth-text)" }}>
-              <input type="checkbox" className="mt-1 rounded" />
+              <input
+                type="checkbox"
+                className="mt-1 rounded"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+              />
               <span>
                 قوانین و{" "}
                 <a href="#" style={{ color: "var(--auth-secondary)" }}>
@@ -42,7 +113,13 @@ export default function SignupPage() {
               </span>
             </label>
 
-            <AuthButton>ساخت حساب</AuthButton>
+            {error && (
+              <p className="mb-4 text-sm" style={{ color: "var(--auth-secondary)" }}>
+                {error}
+              </p>
+            )}
+
+            <AuthButton loading={loading}>ساخت حساب</AuthButton>
           </form>
 
           <AuthDivider />

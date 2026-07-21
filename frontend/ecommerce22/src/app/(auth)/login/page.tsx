@@ -64,7 +64,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit}>
             <AuthInput
-              label="نام کاربری"
+              label="ایمیل"
               name="username"
               icon={<User className="h-4 w-4" />}
               value={username}
