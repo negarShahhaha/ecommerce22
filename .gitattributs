@@ -1,0 +1,2 @@
+backend/*.py linguist-language=Python
+backend/**/*.py linguist-language=Python
