@@ -4,6 +4,7 @@ from .models import PreSaveUser, Otp
 from datetime import timedelta
 from django.utils import timezone
 from .models import Profile
+from bucket import bucket
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -97,14 +98,32 @@ class OtpSerializer(serializers.Serializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
-    user = serializers.SerializerMethodField(read_only=True)
+    image = serializers.ImageField(source='avatar', required=False, write_only=True, allow_null=True)
+    remove_image = serializers.BooleanField(write_only=True, required=False, default=False)
+    image_path = serializers.SerializerMethodField(read_only=True)
     updated = serializers.DateTimeField(read_only=True)
     created = serializers.DateTimeField(read_only=True)
+    user = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Profile
-        fields = ['avatar', 'bio', 'date_of_birth', 'updated', 'created', 'user']
+        fields = [
+            'image',
+            'image_path',
+            'remove_image',
+            'bio',
+            'date_of_birth',
+            'updated',
+            'created',
+            'user',
+        ]
 
     def get_user(self, obj):
         user_info = User.objects.get(id=obj.user.id)
         return UserSerializer(instance=user_info).data
+
+    def get_image_path(self, obj):
+        if obj.avatar:
+            return bucket.generate_download_link(obj.avatar.name, 86400)
+        return None
+

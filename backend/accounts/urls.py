@@ -8,6 +8,7 @@ urlpatterns = [
     path('register/', api_views.UserRegisterView.as_view()),
     path('register/verify/', api_views.UserRegisterVerifyView.as_view()),
     path('login/', api_views.CustomAuthToken.as_view()),
+    path('profile/', api_views.UserSelfProfileView.as_view()),
     path('profile/<int:user_id>/', api_views.UserProfileView.as_view()),
 ]
 

@@ -168,3 +168,30 @@ REST_FRAMEWORK = {
 
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
+
+
+# ARVAN CLOUD OBJECT STORAGE
+
+AWS_SERVICE_NAME = 's3'
+AWS_S3_ACCESS_KEY_ID = '3078d4af-ce12-4ab1-82a7-926d2ba5da0d'
+AWS_S3_SECRET_ACCESS_KEY = 'a18a565fa79cf312b30214d1467c9b35ac45a584685c6c67f52903005572cd82'
+AWS_S3_ENDPOINT_URL = 'https://s3.ir-thr-at1.arvanstorage.ir'
+AWS_STORAGE_BUCKET_NAME = 'eccom'
+
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'storages.backends.s3.S3Storage',
+        'OPTIONS': {
+            'access_key': AWS_S3_ACCESS_KEY_ID,
+            'secret_key': AWS_S3_SECRET_ACCESS_KEY,
+            'endpoint_url': AWS_S3_ENDPOINT_URL,
+            'bucket_name': AWS_STORAGE_BUCKET_NAME,
+            'file_overwrite': False,
+        }
+    },
+
+    'staticfiles': {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'
+    },
+}
